@@ -1,0 +1,1436 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Video Splitting Tool — Auto Multi-Part Splitter &amp; ZIP Exporter</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg-obsidian: #090A0F;
+      --bg-charcoal: #12141E;
+      --bg-card: rgba(18, 20, 30, 0.88);
+      --border-subtle: rgba(255, 255, 255, 0.1);
+      --amber: #F59E0B;
+      --amber-soft: rgba(245, 158, 11, 0.16);
+      --violet: #8B5CF6;
+      --violet-soft: rgba(139, 92, 246, 0.18);
+      --emerald: #10B981;
+      --rose: #F43F5E;
+      --text-main: #F8FAFC;
+      --text-muted: #94A3B8;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background-color: var(--bg-obsidian);
+      background-image:
+        radial-gradient(circle at 12% 10%, rgba(139, 92, 246, 0.16), transparent 38%),
+        radial-gradient(circle at 88% 85%, rgba(245, 158, 11, 0.14), transparent 40%);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      line-height: 1.45;
+      overflow-x: hidden;
+    }
+
+    .hidden { display: none !important; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      background: rgba(9, 10, 15, 0.9);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 12px 16px;
+    }
+
+    .topbar-inner {
+      max-width: 1120px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .brand { display: flex; align-items: center; gap: 10px; }
+
+    .brand-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--amber), var(--violet));
+      padding: 1.5px;
+      flex-shrink: 0;
+    }
+
+    .brand-icon-inner {
+      width: 100%;
+      height: 100%;
+      border-radius: 10.5px;
+      background: var(--bg-obsidian);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--amber);
+    }
+
+    .brand-title { font-size: 16px; font-weight: 800; letter-spacing: -0.02em; margin: 0; }
+    .brand-sub { font-size: 11px; color: var(--text-muted); margin: 0; }
+
+    .container {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .glass-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid var(--border-subtle);
+      border-radius: 22px;
+      padding: 16px;
+      box-shadow: 0 18px 40px -15px rgba(0, 0, 0, 0.7);
+    }
+
+    .status-banner {
+      border-radius: 14px;
+      padding: 11px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      background: rgba(245, 158, 11, 0.12);
+      color: #FDE68A;
+    }
+
+    .status-banner.error {
+      border-color: rgba(244, 63, 94, 0.5);
+      background: rgba(244, 63, 94, 0.15);
+      color: #FECDD3;
+    }
+
+    .status-banner.success {
+      border-color: rgba(16, 185, 129, 0.5);
+      background: rgba(16, 185, 129, 0.15);
+      color: #A7F3D0;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border-radius: 13px;
+      padding: 12px 16px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      border: 1px solid var(--border-subtle);
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-main);
+      text-decoration: none;
+      transition: transform 0.12s ease, background 0.15s ease, border-color 0.15s ease;
+      user-select: none;
+    }
+
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.45; pointer-events: none; }
+
+    .btn-amber {
+      background: linear-gradient(135deg, #F59E0B, #D97706);
+      color: #090A0F;
+      border: none;
+      box-shadow: 0 8px 24px -6px rgba(245, 158, 11, 0.45);
+    }
+
+    .btn-primary-gradient {
+      background: linear-gradient(135deg, #F59E0B 0%, #8B5CF6 100%);
+      color: #090A0F;
+      font-weight: 800;
+      font-size: 14px;
+      padding: 15px 18px;
+      border: none;
+      width: 100%;
+      box-shadow: 0 10px 28px -6px rgba(139, 92, 246, 0.45);
+    }
+
+    .btn-emerald { background: var(--emerald); color: #052E16; border: none; font-weight: 800; }
+    .btn-rose { background: rgba(244, 63, 94, 0.18); border-color: rgba(244, 63, 94, 0.45); color: #FDA4AF; }
+    .btn-sm { padding: 8px 11px; font-size: 11.5px; border-radius: 10px; }
+
+    .chip-active-amber { border-color: var(--amber) !important; background: var(--amber-soft) !important; color: #FCD34D !important; }
+    .chip-active-violet { border-color: var(--violet) !important; background: var(--violet-soft) !important; color: #DDD6FE !important; }
+    .chip-done-emerald { border-color: rgba(16, 185, 129, 0.5) !important; background: rgba(16, 185, 129, 0.14) !important; color: #A7F3D0 !important; }
+
+    .input-box {
+      width: 100%;
+      background: rgba(9, 10, 15, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 12px;
+      padding: 10px 12px;
+      color: var(--text-main);
+      font-size: 12.5px;
+      outline: none;
+    }
+
+    .input-box:focus { border-color: var(--amber); }
+    .mono { font-family: var(--font-mono); }
+
+    .upload-zone {
+      border: 2px dashed rgba(255, 255, 255, 0.18);
+      border-radius: 24px;
+      padding: 28px 18px;
+      text-align: center;
+      transition: border-color 0.2s ease, background 0.2s ease;
+    }
+
+    .upload-zone.dragover { border-color: var(--amber); background: rgba(245, 158, 11, 0.06); }
+
+    .upload-badge {
+      width: 60px;
+      height: 60px;
+      margin: 0 auto 14px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(139, 92, 246, 0.2));
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--amber);
+    }
+
+    .native-file-bar {
+      width: 100%;
+      background: rgba(9, 10, 15, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      padding: 8px;
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+
+    .native-file-bar::file-selector-button {
+      background: var(--violet-soft);
+      color: #DDD6FE;
+      border: 1px solid rgba(139, 92, 246, 0.4);
+      border-radius: 9px;
+      padding: 7px 12px;
+      margin-right: 10px;
+      font-weight: 700;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .studio-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+    @media (min-width: 960px) {
+      .studio-grid { grid-template-columns: 1.2fr 1fr; align-items: start; }
+    }
+
+    .video-stage {
+      position: relative;
+      width: 100%;
+      min-height: 210px;
+      background: #000000;
+      border-radius: 16px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #preview-video {
+      display: block;
+      max-width: 100%;
+      max-height: 44vh;
+      width: auto;
+      height: auto;
+      user-select: none;
+    }
+
+    .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+
+    .section-title { font-size: 14px; font-weight: 800; margin: 0 0 4px 0; color: #FFFFFF; }
+    .section-sub { font-size: 11.5px; color: var(--text-muted); margin: 0 0 12px 0; }
+
+    .progress-wrap {
+      background: rgba(9, 10, 15, 0.92);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      border-radius: 16px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.1);
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--amber), var(--violet));
+      transition: width 0.15s linear;
+    }
+
+    .result-wrap {
+      background: rgba(6, 78, 59, 0.25);
+      border: 1px solid rgba(16, 185, 129, 0.45);
+      border-radius: 16px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .pill-tag {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 4px 8px;
+      font-size: 11px;
+      font-family: var(--font-mono);
+    }
+
+    .part-card {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 3px;
+      text-align: left;
+      padding: 9px 11px;
+      border-radius: 11px;
+      border: 1px solid var(--border-subtle);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-main);
+      cursor: pointer;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 90;
+      background: rgba(5, 6, 10, 0.85);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .modal-box {
+      width: 100%;
+      max-width: 440px;
+      background: #12141E;
+      border: 1px solid rgba(245, 158, 11, 0.45);
+      border-radius: 20px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation -->
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="brand-icon">
+          <div class="brand-icon-inner">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="6" cy="6" r="3"/>
+              <circle cx="6" cy="18" r="3"/>
+              <line x1="20" y1="4" x2="8.12" y2="15.88"/>
+              <line x1="14.47" y1="14.48" x2="20" y2="20"/>
+              <line x1="8.12" y1="8.12" x2="12" y2="12"/>
+            </svg>
+          </div>
+        </div>
+        <div>
+          <h1 class="brand-title">Video Splitting Tool</h1>
+          <p class="brand-sub">Auto Multi-Part Video Splitter &amp; ZIP Packager</p>
+        </div>
+      </div>
+
+      <button type="button" id="btn-change-video" class="btn btn-sm hidden">Change Video</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Live Status Banner -->
+    <div id="status-banner" class="status-banner hidden" role="status">
+      <span id="status-text">Ready</span>
+      <button type="button" id="btn-dismiss-banner" class="btn btn-sm" style="padding:4px 8px;">✕</button>
+    </div>
+
+    <!-- STEP 1: Video Loader -->
+    <section id="loader-section" class="glass-card">
+      <div id="drop-zone" class="upload-zone">
+        <div class="upload-badge">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+        </div>
+
+        <h2 style="font-size:19px;font-weight:800;margin:0 0 6px 0;">Select Video to Split into Parts</h2>
+        <p style="font-size:12.5px;color:var(--text-muted);max-width:460px;margin:0 auto 18px;">
+          Split long videos into Shorts, Reels, WhatsApp Status clips, or equal segments automatically. All parts are bundled neatly inside a single ZIP folder.
+        </p>
+
+        <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-bottom:16px;">
+          <label for="file-input" class="btn btn-amber">Select Video File</label>
+          <button type="button" id="btn-generate-sample" class="btn">Generate 15s Sample Video</button>
+        </div>
+
+        <div style="max-width:460px;margin:0 auto;">
+          <input type="file" id="file-input" accept="video/*" class="native-file-bar" />
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 2: Splitting Studio -->
+    <section id="studio-section" class="hidden" style="display:flex;flex-direction:column;gap:16px;">
+      <!-- File Metadata Bar -->
+      <div class="glass-card" style="padding:12px 16px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;">
+        <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+          <span style="width:9px;height:9px;border-radius:50%;background:var(--emerald);flex-shrink:0;"></span>
+          <strong id="meta-name" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;">video.mp4</strong>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          <span class="pill-tag" id="meta-res">0×0</span>
+          <span class="pill-tag" id="meta-dur">00:00:00</span>
+          <span class="pill-tag" id="meta-size" style="color:#FCD34D;">0 MB</span>
+        </div>
+      </div>
+
+      <div class="studio-grid">
+        <!-- Left Column: Preview & Generated Parts List -->
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          <div class="glass-card" style="display:flex;flex-direction:column;gap:12px;">
+            <div class="video-stage">
+              <video id="preview-video" controls playsinline preload="metadata"></video>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:6px;font-size:11.5px;color:var(--text-muted);">
+              <span>Tap any generated part below to preview its start point</span>
+              <span class="pill-tag" id="preview-range-badge">Full Video</span>
+            </div>
+          </div>
+
+          <!-- Generated Segments Preview List -->
+          <div class="glass-card">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
+              <div>
+                <h3 class="section-title">Generated Parts Preview</h3>
+                <p class="section-sub" style="margin:0;">Click a part to preview or export only that single part</p>
+              </div>
+              <span class="pill-tag chip-active-violet" id="split-count">0 parts</span>
+            </div>
+
+            <div id="split-parts-list" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;max-height:330px;overflow-y:auto;padding-right:2px;"></div>
+          </div>
+        </div>
+
+        <!-- Right Column: Split Rules & Export Controls -->
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          <!-- Step 1: Configure Split Mode -->
+          <div class="glass-card" style="display:flex;flex-direction:column;gap:12px;">
+            <div>
+              <h3 class="section-title">1. Choose Splitting Rule</h3>
+              <p class="section-sub" style="margin:0;">Split by exact clip duration or into equal-sized parts</p>
+            </div>
+
+            <div class="grid-2">
+              <button type="button" class="btn btn-sm mode-btn chip-active-amber" data-mode="duration">Fixed Duration</button>
+              <button type="button" class="btn btn-sm mode-btn" data-mode="count">Equal Parts Count</button>
+            </div>
+
+            <!-- Mode A: Fixed Duration -->
+            <div id="mode-duration-box" style="display:flex;flex-direction:column;gap:8px;">
+              <label for="split-duration" style="font-size:11.5px;font-weight:700;color:var(--text-muted);">Length of each part</label>
+              <select id="split-duration" class="input-box">
+                <option value="5">5 seconds (Quick Test)</option>
+                <option value="15">15 seconds (Reels / Stories)</option>
+                <option value="30" selected>30 seconds (WhatsApp Status)</option>
+                <option value="60">60 seconds (YouTube Shorts)</option>
+                <option value="120">2 minutes</option>
+                <option value="300">5 minutes</option>
+                <option value="600">10 minutes</option>
+                <option value="custom">Custom seconds...</option>
+              </select>
+              <div id="split-custom-wrap" class="hidden">
+                <input id="split-custom-seconds" class="input-box" type="number" min="2" max="3600" value="45" placeholder="Enter seconds (e.g. 45)" />
+              </div>
+            </div>
+
+            <!-- Mode B: Equal Parts Count -->
+            <div id="mode-count-box" class="hidden" style="display:flex;flex-direction:column;gap:8px;">
+              <label for="split-equal-count" style="font-size:11.5px;font-weight:700;color:var(--text-muted);">Number of equal parts (2 – 100)</label>
+              <input id="split-equal-count" class="input-box" type="number" min="2" max="100" value="4" />
+            </div>
+
+            <!-- Optional Trim Range for Splitting -->
+            <div class="grid-2">
+              <div>
+                <label style="display:block;font-size:10.5px;font-weight:700;color:var(--text-muted);margin-bottom:4px;">Start From (HH:MM:SS)</label>
+                <input type="text" id="input-start-hms" class="input-box mono" value="00:00:00" />
+              </div>
+              <div>
+                <label style="display:block;font-size:10.5px;font-weight:700;color:var(--text-muted);margin-bottom:4px;">End At (HH:MM:SS)</label>
+                <input type="text" id="input-end-hms" class="input-box mono" value="00:00:00" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 2: Quality & Speed Settings -->
+          <div class="glass-card" style="display:flex;flex-direction:column;gap:12px;">
+            <div>
+              <h3 class="section-title">2. Export Quality &amp; Speed</h3>
+              <p class="section-sub" style="margin:0;">1x keeps normal audio/video speed; 4x/16x creates timelapse parts</p>
+            </div>
+
+            <div>
+              <div style="font-size:11.5px;font-weight:700;color:var(--text-muted);margin-bottom:6px;">Processing Speed</div>
+              <div class="grid-3">
+                <button type="button" class="btn btn-sm speed-btn chip-active-amber" data-speed="1">1x Normal</button>
+                <button type="button" class="btn btn-sm speed-btn" data-speed="4">4x Fast</button>
+                <button type="button" class="btn btn-sm speed-btn" data-speed="16">16x Fast</button>
+              </div>
+            </div>
+
+            <div>
+              <div style="font-size:11.5px;font-weight:700;color:var(--text-muted);margin-bottom:6px;">Output Resolution</div>
+              <div class="grid-4">
+                <button type="button" class="btn btn-sm res-btn chip-active-violet" data-res="original">Original</button>
+                <button type="button" class="btn btn-sm res-btn" data-res="1080">1080p</button>
+                <button type="button" class="btn btn-sm res-btn" data-res="720">720p</button>
+                <button type="button" class="btn btn-sm res-btn" data-res="480">480p</button>
+              </div>
+            </div>
+
+            <div>
+              <div style="font-size:11.5px;font-weight:700;color:var(--text-muted);margin-bottom:6px;">Bitrate Quality</div>
+              <div class="grid-3">
+                <button type="button" class="btn btn-sm qual-btn" data-qual="high">High (8M)</button>
+                <button type="button" class="btn btn-sm qual-btn chip-active-amber" data-qual="balanced">Balanced (4M)</button>
+                <button type="button" class="btn btn-sm qual-btn" data-qual="compact">Compact (1.5M)</button>
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <button type="button" id="btn-split-all" class="btn btn-primary-gradient">
+              Split &amp; Export All Parts (ZIP)
+            </button>
+
+            <button type="button" id="btn-export-single-part" class="btn btn-sm" style="width:100%;">
+              Export Selected Part Only (Part 1)
+            </button>
+
+            <!-- Active Progress Box -->
+            <div id="progress-box" class="progress-wrap hidden">
+              <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;">
+                <span id="progress-status" style="font-weight:700;color:#FDE68A;">Preparing splitter...</span>
+                <span id="progress-pct" class="mono" style="font-weight:800;color:var(--amber);">0%</span>
+              </div>
+              <div class="progress-track">
+                <div id="progress-fill" class="progress-fill"></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--text-muted);">
+                <span id="progress-part-info" class="mono">Part 1 of 1</span>
+                <span>Keep Screen Open</span>
+              </div>
+              <button type="button" id="btn-cancel-split" class="btn btn-rose btn-sm" style="width:100%;">
+                Stop Splitting
+              </button>
+            </div>
+
+            <!-- Completed Output & ZIP Download Box -->
+            <div id="result-box" class="result-wrap hidden">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <strong style="font-size:13px;color:#6EE7B7;">Splitting Complete!</strong>
+                <span id="result-badge" class="pill-tag" style="color:#A7F3D0;">0 parts ready</span>
+              </div>
+
+              <div class="grid-2">
+                <button type="button" id="btn-save-zip" class="btn btn-amber btn-sm" style="width:100%;">
+                  Save All Parts (ZIP)
+                </button>
+                <a id="link-direct-zip" href="#" target="_blank" rel="noopener" download="split-videos-folder.zip" class="btn btn-emerald btn-sm" style="width:100%;">
+                  Direct ZIP Download
+                </a>
+              </div>
+
+              <div id="exported-files-list" style="display:flex;flex-direction:column;gap:8px;max-height:260px;overflow-y:auto;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Save / Open Modal for Preview & Mobile Browsers -->
+  <div id="fallback-modal" class="modal-backdrop hidden">
+    <div class="modal-box">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <strong style="font-size:14px;color:#FCD34D;">Save / Preview File</strong>
+        <button type="button" id="btn-close-modal" class="btn btn-sm" style="padding:4px 9px;">✕</button>
+      </div>
+      <p style="font-size:12px;color:var(--text-muted);margin:0;">
+        Save <strong id="modal-filename" style="color:#FFF;">file</strong> to your device using any option below:
+      </p>
+      <video id="modal-video-preview" controls playsinline class="hidden" style="width:100%;max-height:190px;border-radius:12px;background:#000;"></video>
+      <button type="button" id="modal-picker-btn" class="btn btn-amber" style="width:100%;">
+        Save As to Device Storage
+      </button>
+      <a id="modal-open-link" href="#" target="_blank" rel="noopener" download="download" class="btn btn-emerald" style="width:100%;">
+        Direct Download / Open in New Tab
+      </a>
+      <button type="button" id="btn-copy-blob-url" class="btn btn-sm" style="width:100%;">
+        Copy File Link
+      </button>
+      <input type="text" id="modal-url-input" class="input-box mono" readonly style="font-size:11px;" />
+    </div>
+  </div>
+
+  <!-- Offscreen Processing Elements -->
+  <canvas id="render-canvas" class="hidden"></canvas>
+  <video id="worker-video" muted playsinline preload="auto" style="position:fixed;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;"></video>
+
+  <script>
+    (function () {
+      'use strict';
+
+      const BITRATES = { high: 8000000, balanced: 4000000, compact: 1500000 };
+
+      const state = {
+        file: null,
+        fileName: 'video.mp4',
+        objectUrl: null,
+        duration: 0,
+        videoWidth: 1280,
+        videoHeight: 720,
+        rangeStart: 0,
+        rangeEnd: 0,
+        splitMode: 'duration',
+        speedMode: 1,
+        resMode: 'original',
+        qualMode: 'balanced',
+        parts: [],
+        selectedPartIndex: 0,
+        exportedParts: [],
+        latestZipBlob: null,
+        latestZipUrl: null,
+        isProcessing: false,
+        cancelFlag: false,
+        activeRecorder: null,
+        rafId: null,
+        wakeLock: null
+      };
+
+      const $ = (id) => document.getElementById(id);
+
+      const dom = {
+        statusBanner: $('status-banner'),
+        statusText: $('status-text'),
+        btnDismissBanner: $('btn-dismiss-banner'),
+        btnChangeVideo: $('btn-change-video'),
+        loaderSection: $('loader-section'),
+        studioSection: $('studio-section'),
+        dropZone: $('drop-zone'),
+        fileInput: $('file-input'),
+        btnGenerateSample: $('btn-generate-sample'),
+        metaName: $('meta-name'),
+        metaRes: $('meta-res'),
+        metaDur: $('meta-dur'),
+        metaSize: $('meta-size'),
+        previewVideo: $('preview-video'),
+        previewRangeBadge: $('preview-range-badge'),
+        splitCount: $('split-count'),
+        splitPartsList: $('split-parts-list'),
+        modeDurationBox: $('mode-duration-box'),
+        modeCountBox: $('mode-count-box'),
+        splitDuration: $('split-duration'),
+        splitCustomWrap: $('split-custom-wrap'),
+        splitCustomSeconds: $('split-custom-seconds'),
+        splitEqualCount: $('split-equal-count'),
+        inputStartHms: $('input-start-hms'),
+        inputEndHms: $('input-end-hms'),
+        btnSplitAll: $('btn-split-all'),
+        btnExportSinglePart: $('btn-export-single-part'),
+        progressBox: $('progress-box'),
+        progressStatus: $('progress-status'),
+        progressPct: $('progress-pct'),
+        progressFill: $('progress-fill'),
+        progressPartInfo: $('progress-part-info'),
+        btnCancelSplit: $('btn-cancel-split'),
+        resultBox: $('result-box'),
+        resultBadge: $('result-badge'),
+        btnSaveZip: $('btn-save-zip'),
+        linkDirectZip: $('link-direct-zip'),
+        exportedFilesList: $('exported-files-list'),
+        fallbackModal: $('fallback-modal'),
+        btnCloseModal: $('btn-close-modal'),
+        modalFilename: $('modal-filename'),
+        modalVideoPreview: $('modal-video-preview'),
+        modalPickerBtn: $('modal-picker-btn'),
+        modalOpenLink: $('modal-open-link'),
+        btnCopyBlobUrl: $('btn-copy-blob-url'),
+        modalUrlInput: $('modal-url-input'),
+        renderCanvas: $('render-canvas'),
+        workerVideo: $('worker-video')
+      };
+
+      let currentModalBlob = null;
+      let currentModalFilename = '';
+
+      function showStatus(msg, type = 'info') {
+        dom.statusText.textContent = msg;
+        dom.statusBanner.className = 'status-banner' + (type === 'error' ? ' error' : type === 'success' ? ' success' : '');
+        dom.statusBanner.classList.remove('hidden');
+      }
+
+      dom.btnDismissBanner.addEventListener('click', () => dom.statusBanner.classList.add('hidden'));
+      dom.btnCloseModal.addEventListener('click', () => {
+        dom.modalVideoPreview.pause();
+        dom.fallbackModal.classList.add('hidden');
+      });
+
+      function blobToDataUrl(blob) {
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = () => resolve(null);
+          reader.readAsDataURL(blob);
+        });
+      }
+
+      async function triggerDirectDownload(blob, filename) {
+        const blobUrl = URL.createObjectURL(blob);
+        let href = blobUrl;
+
+        if (blob.size <= 25 * 1024 * 1024) {
+          const dataUrl = await blobToDataUrl(blob);
+          if (dataUrl) href = dataUrl;
+        }
+
+        const a = document.createElement('a');
+        a.href = href;
+        a.download = filename;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+        return href;
+      }
+
+      dom.modalPickerBtn.addEventListener('click', async () => {
+        if (!currentModalBlob) {
+          showStatus('No file ready to save yet.', 'error');
+          return;
+        }
+        dom.modalPickerBtn.disabled = true;
+        dom.modalPickerBtn.textContent = 'Saving to Device...';
+
+        try {
+          if (typeof File !== 'undefined' && navigator.share && navigator.canShare) {
+            try {
+              const shareFile = new File([currentModalBlob], currentModalFilename, {
+                type: currentModalBlob.type || 'application/octet-stream'
+              });
+              if (navigator.canShare({ files: [shareFile] })) {
+                await navigator.share({ files: [shareFile], title: currentModalFilename });
+                showStatus(`Shared ${currentModalFilename} — choose Files or Downloads to save.`, 'success');
+                return;
+              }
+            } catch (err) {
+              if (err && err.name === 'AbortError') return;
+            }
+          }
+
+          if (window.self === window.top && window.showSaveFilePicker) {
+            try {
+              const handle = await window.showSaveFilePicker({ suggestedName: currentModalFilename });
+              const writable = await handle.createWritable();
+              await writable.write(currentModalBlob);
+              await writable.close();
+              showStatus(`Saved ${currentModalFilename} to your device!`, 'success');
+              dom.fallbackModal.classList.add('hidden');
+              return;
+            } catch (err) {
+              if (err && err.name === 'AbortError') return;
+            }
+          }
+
+          await triggerDirectDownload(currentModalBlob, currentModalFilename);
+          showStatus(`Download started for ${currentModalFilename}! If blocked by the app preview, use the video 3-dots menu (⋮) → Download.`, 'success');
+        } catch (err) {
+          showStatus('Save failed: ' + (err.message || 'Unknown error'), 'error');
+        } finally {
+          dom.modalPickerBtn.disabled = false;
+          dom.modalPickerBtn.textContent = 'Save As to Device Storage';
+        }
+      });
+
+      dom.btnCopyBlobUrl.addEventListener('click', () => {
+        if (!dom.modalUrlInput.value) return;
+        dom.modalUrlInput.select();
+        dom.modalUrlInput.setSelectionRange(0, 99999);
+        try {
+          document.execCommand('copy');
+          showStatus('File link copied!', 'success');
+        } catch (err) {
+          showStatus('Could not copy link automatically.', 'error');
+        }
+      });
+
+      function clamp(v, min, max) {
+        return Math.min(Math.max(v, min), max);
+      }
+
+      function formatHMS(sec) {
+        if (!isFinite(sec) || sec < 0) sec = 0;
+        const h = Math.floor(sec / 3600);
+        const m = Math.floor((sec % 3600) / 60);
+        const s = Math.floor(sec % 60);
+        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+      }
+
+      function parseHMS(str) {
+        if (!str) return null;
+        const parts = str.trim().split(':').map(Number);
+        if (parts.some((n) => isNaN(n) || n < 0)) return null;
+        if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+        if (parts.length === 2) return parts[0] * 60 + parts[1];
+        if (parts.length === 1) return parts[0];
+        return null;
+      }
+
+      function formatBytes(bytes) {
+        if (!bytes || bytes <= 0) return '0.0 MB';
+        const units = ['B', 'KB', 'MB', 'GB'];
+        let idx = 0;
+        let val = bytes;
+        while (val >= 1024 && idx < units.length - 1) {
+          val /= 1024;
+          idx++;
+        }
+        return `${val.toFixed(idx === 0 ? 0 : 1)} ${units[idx]}`;
+      }
+
+      // --- Zero-Dependency STORE-Mode ZIP Packager ---
+      const crcTable = (() => {
+        const table = new Uint32Array(256);
+        for (let i = 0; i < 256; i++) {
+          let c = i;
+          for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+          table[i] = c >>> 0;
+        }
+        return table;
+      })();
+
+      function computeCRC32(uint8) {
+        let crc = 0xFFFFFFFF;
+        for (let i = 0; i < uint8.length; i++) crc = crcTable[(crc ^ uint8[i]) & 0xFF] ^ (crc >>> 8);
+        return (crc ^ 0xFFFFFFFF) >>> 0;
+      }
+
+      async function buildStoreZip(entries) {
+        const encoder = new TextEncoder();
+        const fileParts = [];
+        const centralDirParts = [];
+        let offset = 0;
+        const now = new Date();
+        const dosTime = ((now.getHours() & 0x1F) << 11) | ((now.getMinutes() & 0x3F) << 5) | ((Math.floor(now.getSeconds() / 2)) & 0x1F);
+        const dosDate = (((Math.max(1980, now.getFullYear()) - 1980) & 0x7F) << 9) | (((now.getMonth() + 1) & 0x0F) << 5) | (now.getDate() & 0x1F);
+
+        for (const entry of entries) {
+          const nameBytes = encoder.encode(entry.path);
+          const dataBytes = new Uint8Array(await entry.blob.arrayBuffer());
+          const crc = computeCRC32(dataBytes);
+          const size = dataBytes.length;
+
+          const localHeader = new ArrayBuffer(30 + nameBytes.length);
+          const lv = new DataView(localHeader);
+          lv.setUint32(0, 0x04034B50, true);
+          lv.setUint16(4, 20, true);
+          lv.setUint16(6, 0x0800, true);
+          lv.setUint16(8, 0, true);
+          lv.setUint16(10, dosTime, true);
+          lv.setUint16(12, dosDate, true);
+          lv.setUint32(14, crc, true);
+          lv.setUint32(18, size, true);
+          lv.setUint32(22, size, true);
+          lv.setUint16(26, nameBytes.length, true);
+          lv.setUint16(28, 0, true);
+          new Uint8Array(localHeader, 30).set(nameBytes);
+          fileParts.push(localHeader, dataBytes);
+
+          const centralHeader = new ArrayBuffer(46 + nameBytes.length);
+          const cv = new DataView(centralHeader);
+          cv.setUint32(0, 0x02014B50, true);
+          cv.setUint16(4, 20, true);
+          cv.setUint16(6, 20, true);
+          cv.setUint16(8, 0x0800, true);
+          cv.setUint16(10, 0, true);
+          cv.setUint16(12, dosTime, true);
+          cv.setUint16(14, dosDate, true);
+          cv.setUint32(16, crc, true);
+          cv.setUint32(20, size, true);
+          cv.setUint32(24, size, true);
+          cv.setUint16(28, nameBytes.length, true);
+          cv.setUint32(42, offset, true);
+          new Uint8Array(centralHeader, 46).set(nameBytes);
+          centralDirParts.push(centralHeader);
+
+          offset += localHeader.byteLength + size;
+        }
+
+        const centralDirSize = centralDirParts.reduce((acc, b) => acc + b.byteLength, 0);
+        const eocd = new ArrayBuffer(22);
+        const ev = new DataView(eocd);
+        ev.setUint32(0, 0x06054B50, true);
+        ev.setUint16(8, entries.length, true);
+        ev.setUint16(10, entries.length, true);
+        ev.setUint32(12, centralDirSize, true);
+        ev.setUint32(16, offset, true);
+
+        return new Blob([...fileParts, ...centralDirParts, eocd], { type: 'application/zip' });
+      }
+
+      function openFallbackModal(url, filename, blob) {
+        currentModalBlob = blob;
+        currentModalFilename = filename;
+        dom.modalFilename.textContent = filename;
+        dom.modalOpenLink.href = url;
+        dom.modalOpenLink.download = filename;
+        dom.modalUrlInput.value = url;
+
+        if (blob && blob.type && blob.type.startsWith('video/')) {
+          dom.modalVideoPreview.src = url;
+          dom.modalVideoPreview.classList.remove('hidden');
+        } else {
+          dom.modalVideoPreview.classList.add('hidden');
+        }
+
+        dom.fallbackModal.classList.remove('hidden');
+      }
+
+      async function saveBlobToPhone(blob, filename) {
+        if (!blob) {
+          showStatus('No file ready to save yet. Run Split & Export first.', 'error');
+          return;
+        }
+
+        const isSandboxed = window.self !== window.top;
+        const url = URL.createObjectURL(blob);
+
+        try {
+          if (typeof File !== 'undefined' && navigator.share && navigator.canShare) {
+            const shareFile = new File([blob], filename, { type: blob.type || 'application/octet-stream' });
+            if (navigator.canShare({ files: [shareFile] })) {
+              await navigator.share({ files: [shareFile], title: filename });
+              showStatus(`Shared ${filename} successfully!`, 'success');
+              return;
+            }
+          }
+        } catch (err) {
+          if (err && err.name === 'AbortError') return;
+        }
+
+        const downloadHref = await triggerDirectDownload(blob, filename);
+
+        if (isSandboxed) {
+          openFallbackModal(downloadHref || url, filename, blob);
+          showStatus(`File ready! If your app's preview blocks automatic downloads, tap the 3-dots (⋮) on the video player above and choose Download.`, 'success');
+        } else {
+          showStatus(`Downloading ${filename} to your device...`, 'success');
+        }
+      }
+
+      // --- Calculate & Render Split Segments ---
+      function recalculateParts() {
+        if (!state.duration || state.duration <= 0) return;
+        const start = clamp(state.rangeStart, 0, Math.max(0, state.duration - 0.2));
+        const end = clamp(state.rangeEnd, start + 0.2, state.duration);
+        const totalSpan = end - start;
+        const parts = [];
+
+        if (state.splitMode === 'duration') {
+          let segLen = Number(dom.splitDuration.value);
+          if (dom.splitDuration.value === 'custom') {
+            segLen = clamp(Number(dom.splitCustomSeconds.value) || 30, 2, 3600);
+          }
+          const count = Math.min(200, Math.ceil(totalSpan / segLen));
+          for (let i = 0; i < count; i++) {
+            const s = start + i * segLen;
+            const e = Math.min(end, s + segLen);
+            if (e - s >= 0.15) parts.push({ index: i, start: s, end: e, done: false });
+          }
+        } else {
+          const count = clamp(Math.floor(Number(dom.splitEqualCount.value) || 4), 2, 100);
+          const segLen = totalSpan / count;
+          for (let i = 0; i < count; i++) {
+            const s = start + i * segLen;
+            const e = i === count - 1 ? end : start + (i + 1) * segLen;
+            parts.push({ index: i, start: s, end: e, done: false });
+          }
+        }
+
+        state.parts = parts;
+        state.selectedPartIndex = 0;
+        renderPartsGrid();
+      }
+
+      function renderPartsGrid() {
+        dom.splitPartsList.innerHTML = '';
+        dom.splitCount.textContent = `${state.parts.length} parts`;
+        dom.btnSplitAll.textContent = `Split & Export All ${state.parts.length} Parts (ZIP)`;
+
+        state.parts.forEach((p, idx) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'part-card' +
+            (idx === state.selectedPartIndex ? ' chip-active-amber' : '') +
+            (p.done ? ' chip-done-emerald' : '');
+          btn.innerHTML = `
+            <div style="display:flex;justify-content:space-between;width:100%;font-size:12px;">
+              <strong>Part ${idx + 1} ${p.done ? '✓' : ''}</strong>
+              <span class="mono" style="font-size:10px;color:#FCD34D;">${(p.end - p.start).toFixed(1)}s</span>
+            </div>
+            <span class="mono" style="font-size:10.5px;color:var(--text-muted);">${formatHMS(p.start)} → ${formatHMS(p.end)}</span>
+          `;
+          btn.addEventListener('click', () => {
+            if (state.isProcessing) return;
+            state.selectedPartIndex = idx;
+            dom.previewVideo.currentTime = p.start;
+            dom.previewRangeBadge.textContent = `Part ${idx + 1}: ${formatHMS(p.start)} – ${formatHMS(p.end)}`;
+            dom.btnExportSinglePart.textContent = `Export Selected Part Only (Part ${idx + 1})`;
+            renderPartsGrid();
+          });
+          dom.splitPartsList.appendChild(btn);
+        });
+
+        if (state.parts[state.selectedPartIndex]) {
+          const sel = state.parts[state.selectedPartIndex];
+          dom.btnExportSinglePart.textContent = `Export Selected Part Only (Part ${sel.index + 1})`;
+        }
+      }
+
+      // --- Video Loading ---
+      function loadVideoFromFile(file, fallbackDuration = 15) {
+        if (!file) return;
+        if (!file.type.startsWith('video/') && !/\.(mp4|webm|mov|m4v|mkv|avi)$/i.test(file.name || '')) {
+          showStatus('Please select a valid video file (MP4, WebM, MOV, etc.).', 'error');
+          return;
+        }
+        state.file = file;
+        state.fileName = file.name || 'video.mp4';
+        if (state.objectUrl) URL.revokeObjectURL(state.objectUrl);
+
+        dom.metaName.textContent = state.fileName;
+        dom.metaSize.textContent = formatBytes(file.size || 0);
+        dom.loaderSection.classList.add('hidden');
+        dom.studioSection.classList.remove('hidden');
+        dom.btnChangeVideo.classList.remove('hidden');
+        dom.resultBox.classList.add('hidden');
+
+        dom.previewVideo.onerror = () => {
+          showStatus('This video format could not be decoded by your browser. Try MP4 (H.264) or WebM.', 'error');
+        };
+
+        dom.previewVideo.onloadedmetadata = () => {
+          const rawDur = dom.previewVideo.duration;
+          state.duration = (Number.isFinite(rawDur) && rawDur > 0) ? rawDur : fallbackDuration;
+          state.videoWidth = dom.previewVideo.videoWidth || 1280;
+          state.videoHeight = dom.previewVideo.videoHeight || 720;
+          state.rangeStart = 0;
+          state.rangeEnd = state.duration;
+
+          dom.metaRes.textContent = `${state.videoWidth}×${state.videoHeight}`;
+          dom.metaDur.textContent = formatHMS(state.duration);
+          dom.inputStartHms.value = formatHMS(0);
+          dom.inputEndHms.value = formatHMS(state.duration);
+
+          recalculateParts();
+          showStatus('Video ready! Choose split duration or part count, then tap Split & Export.', 'success');
+        };
+
+        state.objectUrl = URL.createObjectURL(file);
+        dom.previewVideo.src = state.objectUrl;
+        dom.previewVideo.load();
+      }
+
+      // --- Single Segment Renderer ---
+      function getTargetOutputSize() {
+        const vw = state.videoWidth;
+        const vh = state.videoHeight;
+        if (state.resMode === 'original') return { width: vw - (vw % 2), height: vh - (vh % 2) };
+        const targetH = parseInt(state.resMode, 10);
+        const scale = Math.min(1, targetH / vh);
+        const w = Math.max(2, Math.round(vw * scale));
+        const h = Math.max(2, Math.round(vh * scale));
+        return { width: w - (w % 2), height: h - (h % 2) };
+      }
+
+      function renderSinglePart(part, partNumber, totalParts) {
+        return new Promise(async (resolve, reject) => {
+          try {
+            const worker = dom.workerVideo;
+            const canvas = dom.renderCanvas;
+            const { width, height } = getTargetOutputSize();
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d', { alpha: false });
+
+            worker.src = state.objectUrl;
+            worker.muted = false;
+            worker.volume = 0;
+            worker.playsInline = true;
+
+            await new Promise((res, rej) => {
+              worker.onloadedmetadata = res;
+              worker.onerror = () => rej(new Error('Could not decode video segment.'));
+              worker.load();
+            });
+
+            await new Promise((res) => {
+              if (Math.abs(worker.currentTime - part.start) < 0.03 && worker.readyState >= 2) return res();
+              const timer = setTimeout(res, 2500);
+              worker.onseeked = () => { clearTimeout(timer); res(); };
+              worker.currentTime = part.start;
+            });
+
+            ctx.drawImage(worker, 0, 0, width, height);
+
+            const mimeList = [
+              'video/webm;codecs=vp9,opus',
+              'video/webm;codecs=vp8,opus',
+              'video/webm',
+              'video/mp4'
+            ];
+            const supportedMime = mimeList.find((m) => MediaRecorder.isTypeSupported(m)) || '';
+            const stream = canvas.captureStream(30);
+
+            let audioCapture = null;
+            if (typeof worker.captureStream === 'function') {
+              try {
+                audioCapture = worker.captureStream();
+                audioCapture.getAudioTracks().forEach((t) => stream.addTrack(t));
+              } catch (_) {}
+            }
+
+            const bitrate = BITRATES[state.qualMode] || BITRATES.balanced;
+            const recorder = new MediaRecorder(
+              stream,
+              supportedMime ? { mimeType: supportedMime, videoBitsPerSecond: bitrate } : { videoBitsPerSecond: bitrate }
+            );
+            state.activeRecorder = recorder;
+            const chunks = [];
+
+            recorder.ondataavailable = (e) => {
+              if (e.data && e.data.size) chunks.push(e.data);
+            };
+
+            recorder.onstop = () => {
+              if (state.rafId) cancelAnimationFrame(state.rafId);
+              stream.getTracks().forEach((t) => { try { t.stop(); } catch (_) {} });
+              if (audioCapture) audioCapture.getTracks().forEach((t) => { try { t.stop(); } catch (_) {} });
+              worker.pause();
+
+              if (state.cancelFlag) return reject(new Error('Cancelled by user'));
+              const mimeType = recorder.mimeType || 'video/webm';
+              const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
+              const blob = new Blob(chunks, { type: mimeType });
+              const baseName = state.fileName.replace(/\.[^/.]+$/, '');
+              const filename = `${baseName}-part-${String(partNumber).padStart(2, '0')}.${ext}`;
+              resolve({ filename, blob, duration: part.end - part.start, dims: `${width}×${height}` });
+            };
+
+            recorder.start(500);
+            worker.playbackRate = state.speedMode;
+            await worker.play();
+
+            const span = Math.max(0.1, part.end - part.start);
+            const loop = () => {
+              if (state.cancelFlag) {
+                if (recorder.state !== 'inactive') recorder.stop();
+                return;
+              }
+              const cur = worker.currentTime;
+              if (cur >= part.end - 0.02 || worker.ended) {
+                if (recorder.state !== 'inactive') recorder.stop();
+                return;
+              }
+              ctx.drawImage(worker, 0, 0, width, height);
+              const partPct = clamp(Math.round(((cur - part.start) / span) * 100), 1, 99);
+              const overallPct = Math.round((((partNumber - 1) + partPct / 100) / totalParts) * 100);
+              dom.progressFill.style.width = `${overallPct}%`;
+              dom.progressPct.textContent = `${overallPct}%`;
+              dom.progressStatus.textContent = `Splitting Part ${partNumber} of ${totalParts} (${partPct}%)`;
+              dom.progressPartInfo.textContent = `${formatHMS(part.start)} → ${formatHMS(part.end)}`;
+              state.rafId = requestAnimationFrame(loop);
+            };
+            loop();
+          } catch (err) {
+            reject(err);
+          }
+        });
+      }
+
+      // --- Batch or Single Split Runner ---
+      async function runSplitting(partsToProcess) {
+        if (state.isProcessing || !partsToProcess.length) return;
+        state.isProcessing = true;
+        state.cancelFlag = false;
+        state.exportedParts = [];
+
+        dom.previewVideo.pause();
+        dom.btnSplitAll.disabled = true;
+        dom.btnExportSinglePart.disabled = true;
+        dom.resultBox.classList.add('hidden');
+        dom.progressBox.classList.remove('hidden');
+        dom.progressFill.style.width = '2%';
+        dom.progressPct.textContent = '2%';
+
+        try {
+          if ('wakeLock' in navigator) {
+            state.wakeLock = await navigator.wakeLock.request('screen').catch(() => null);
+          }
+
+          for (let i = 0; i < partsToProcess.length; i++) {
+            if (state.cancelFlag) break;
+            const part = partsToProcess[i];
+            const exported = await renderSinglePart(part, part.index + 1, partsToProcess.length);
+            part.done = true;
+            state.exportedParts.push(exported);
+            renderPartsGrid();
+          }
+
+          if (state.cancelFlag) {
+            showStatus('Splitting stopped.', 'info');
+          } else if (state.exportedParts.length > 0) {
+            dom.progressStatus.textContent = 'Packaging parts into ZIP folder...';
+            const zipEntries = state.exportedParts.map((item) => ({
+              path: `Split_Videos/${item.filename}`,
+              blob: item.blob
+            }));
+            const zipBlob = await buildStoreZip(zipEntries);
+            if (state.latestZipUrl) URL.revokeObjectURL(state.latestZipUrl);
+            state.latestZipBlob = zipBlob;
+            state.latestZipUrl = URL.createObjectURL(zipBlob);
+
+            let zipHref = state.latestZipUrl;
+            if (zipBlob.size <= 20 * 1024 * 1024) {
+              const zipDataUrl = await blobToDataUrl(zipBlob);
+              if (zipDataUrl) zipHref = zipDataUrl;
+            }
+            dom.linkDirectZip.href = zipHref;
+            dom.resultBadge.textContent = `${state.exportedParts.length} part(s) • ${formatBytes(zipBlob.size)}`;
+
+            dom.exportedFilesList.innerHTML = '';
+            for (const item of state.exportedParts) {
+              const partUrl = URL.createObjectURL(item.blob);
+              let directPartHref = partUrl;
+              if (item.blob.size <= 20 * 1024 * 1024) {
+                const partDataUrl = await blobToDataUrl(item.blob);
+                if (partDataUrl) directPartHref = partDataUrl;
+              }
+
+              const card = document.createElement('div');
+              card.style.cssText = 'display:flex;flex-direction:column;gap:6px;background:rgba(9,10,15,0.75);padding:9px 10px;border-radius:12px;border:1px solid rgba(255,255,255,0.08);font-size:11.5px;';
+              card.innerHTML = `
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
+                  <strong class="mono" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.filename}</strong>
+                  <span class="mono" style="color:#FCD34D;">${formatBytes(item.blob.size)}</span>
+                </div>
+                <video src="${partUrl}" controls playsinline style="width:100%;max-height:140px;border-radius:8px;background:#000;"></video>
+                <div class="grid-2">
+                  <a href="${directPartHref}" download="${item.filename}" class="btn btn-sm btn-emerald" style="padding:6px 10px;">Download File</a>
+                  <button type="button" class="btn btn-sm" style="padding:6px 10px;">Share / Save As</button>
+                </div>
+              `;
+              card.querySelector('button').addEventListener('click', () => saveBlobToPhone(item.blob, item.filename));
+              dom.exportedFilesList.appendChild(card);
+            }
+
+            dom.resultBox.classList.remove('hidden');
+            showStatus(`Success! ${state.exportedParts.length} video parts ready. Tap Download File or use the video player's 3-dots (⋮) → Download.`, 'success');
+          }
+        } catch (err) {
+          showStatus('Splitting error: ' + (err.message || 'Unknown error'), 'error');
+        } finally {
+          state.isProcessing = false;
+          dom.btnSplitAll.disabled = false;
+          dom.btnExportSinglePart.disabled = false;
+          dom.progressBox.classList.add('hidden');
+          dom.workerVideo.pause();
+          dom.workerVideo.removeAttribute('src');
+          dom.workerVideo.load();
+          if (state.wakeLock) {
+            state.wakeLock.release().catch(() => {});
+            state.wakeLock = null;
+          }
+        }
+      }
+
+      // --- Event Listeners ---
+      dom.fileInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) {
+          loadVideoFromFile(e.target.files[0]);
+          e.target.value = '';
+        }
+      });
+
+      dom.dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dom.dropZone.classList.add('dragover'); });
+      dom.dropZone.addEventListener('dragleave', () => dom.dropZone.classList.remove('dragover'));
+      dom.dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dom.dropZone.classList.remove('dragover');
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) loadVideoFromFile(e.dataTransfer.files[0]);
+      });
+
+      dom.btnChangeVideo.addEventListener('click', () => {
+        if (state.isProcessing) return;
+        dom.previewVideo.pause();
+        dom.studioSection.classList.add('hidden');
+        dom.loaderSection.classList.remove('hidden');
+        dom.btnChangeVideo.classList.add('hidden');
+      });
+
+      document.querySelectorAll('.mode-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.mode-btn').forEach((b) => b.classList.remove('chip-active-amber'));
+          btn.classList.add('chip-active-amber');
+          state.splitMode = btn.dataset.mode;
+          dom.modeDurationBox.classList.toggle('hidden', state.splitMode !== 'duration');
+          dom.modeCountBox.classList.toggle('hidden', state.splitMode !== 'count');
+          recalculateParts();
+        });
+      });
+
+      dom.splitDuration.addEventListener('change', () => {
+        dom.splitCustomWrap.classList.toggle('hidden', dom.splitDuration.value !== 'custom');
+        recalculateParts();
+      });
+      dom.splitCustomSeconds.addEventListener('input', recalculateParts);
+      dom.splitEqualCount.addEventListener('input', recalculateParts);
+
+      dom.inputStartHms.addEventListener('change', () => {
+        const val = parseHMS(dom.inputStartHms.value);
+        if (val !== null) state.rangeStart = clamp(val, 0, Math.max(0, state.rangeEnd - 0.5));
+        dom.inputStartHms.value = formatHMS(state.rangeStart);
+        recalculateParts();
+      });
+
+      dom.inputEndHms.addEventListener('change', () => {
+        const val = parseHMS(dom.inputEndHms.value);
+        if (val !== null) state.rangeEnd = clamp(val, state.rangeStart + 0.5, state.duration);
+        dom.inputEndHms.value = formatHMS(state.rangeEnd);
+        recalculateParts();
+      });
+
+      document.querySelectorAll('.speed-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          state.speedMode = Number(btn.dataset.speed);
+          document.querySelectorAll('.speed-btn').forEach((b) => b.classList.toggle('chip-active-amber', Number(b.dataset.speed) === state.speedMode));
+        });
+      });
+
+      document.querySelectorAll('.res-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          state.resMode = btn.dataset.res;
+          document.querySelectorAll('.res-btn').forEach((b) => b.classList.toggle('chip-active-violet', b.dataset.res === state.resMode));
+        });
+      });
+
+      document.querySelectorAll('.qual-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          state.qualMode = btn.dataset.qual;
+          document.querySelectorAll('.qual-btn').forEach((b) => b.classList.toggle('chip-active-amber', b.dataset.qual === state.qualMode));
+        });
+      });
+
+      dom.btnSplitAll.addEventListener('click', () => {
+        if (!state.parts.length) recalculateParts();
+        if (!state.parts.length) {
+          showStatus('Please select a valid video first.', 'error');
+          return;
+        }
+        runSplitting(state.parts);
+      });
+
+      dom.btnExportSinglePart.addEventListener('click', () => {
+        if (!state.parts.length) recalculateParts();
+        const selected = state.parts[state.selectedPartIndex];
+        if (!selected) {
+          showStatus('Please select a part to export.', 'error');
+          return;
+        }
+        runSplitting([selected]);
+      });
+
+      dom.btnCancelSplit.addEventListener('click', () => {
+        state.cancelFlag = true;
+        if (state.activeRecorder && state.activeRecorder.state !== 'inactive') {
+          try { state.activeRecorder.stop(); } catch (_) {}
+        }
+      });
+
+      dom.btnSaveZip.addEventListener('click', () => saveBlobToPhone(state.latestZipBlob, 'split-videos-folder.zip'));
+
+      // 15s Sample Generator for Quick Testing
+      dom.btnGenerateSample.addEventListener('click', () => {
+        showStatus('Generating 15-second sample video...', 'info');
+        const c = document.createElement('canvas');
+        c.width = 640; c.height = 360;
+        const ctx = c.getContext('2d');
+        const rec = new MediaRecorder(c.captureStream(30));
+        const chunks = [];
+        rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+        rec.onstop = () => {
+          const blob = new Blob(chunks, { type: 'video/webm' });
+          loadVideoFromFile(new File([blob], 'sample-15s-video.webm', { type: 'video/webm' }), 15);
+        };
+        rec.start();
+        let f = 0;
+        const t = setInterval(() => {
+          f++;
+          ctx.fillStyle = '#090A0F'; ctx.fillRect(0, 0, 640, 360);
+          ctx.fillStyle = '#8B5CF6'; ctx.fillRect(30, 30, 580, 300);
+          ctx.fillStyle = '#F59E0B';
+          ctx.beginPath(); ctx.arc(100 + (f * 3) % 440, 180, 36, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#FFF'; ctx.font = 'bold 26px sans-serif';
+          ctx.fillText(`Sample Video • ${(f / 30).toFixed(1)}s / 15.0s`, 150, 100);
+          if (f >= 450) { clearInterval(t); rec.stop(); }
+        }, 33);
+      });
+    })();
+  </script>
+</body>
+</html>
